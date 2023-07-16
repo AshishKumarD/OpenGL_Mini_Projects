@@ -1,0 +1,155 @@
+#include <stdio.h>
+#include <GL/glut.h>
+
+double xmin = 50, ymin = 50, xmax = 100, ymax = 100;
+
+const int LEFT = 1;   // 0001
+const int RIGHT = 2;  // 0010
+const int BOTTOM = 4; // 0100
+const int TOP = 8;    // 1000
+
+int outcode(double x, double y)
+{
+    int code = 0;
+    if (y > ymax)
+        code |= TOP;
+
+    else if (y < ymin)
+        code |= BOTTOM;
+
+    if (x > xmax)
+        code |= RIGHT;
+
+    else if (x < xmin)
+        code |= LEFT;
+    return code;
+}
+
+void CohenSutherlandLineClipAndDraw(double x1, double y1, double x2, double y2)
+{
+
+    int p1, p2, pout;
+    bool accept = false, done = false;
+
+    p1 = outcode(x1, y1);
+    p2 = outcode(x2, y2);
+    do
+    {
+        if (!(p1 | p2)) // case 1: Both points lie within rectangle
+        {
+            accept = true;
+            done = true;
+        }
+        else if (p1 & p2) // case 2: Both endpoints are outside rectangle
+            done = true;
+
+        else // case 3: Endpoint is outside the rectangle
+        {
+            double x, y;
+
+            if (p1 != 0)
+                pout = p1; // if p1 is outside
+            else
+                pout = p2; // if p2 is outside
+
+            float m = (y2 - y1) / (x2 - x1); // slope
+            // Where does the point lie?
+            if (pout & TOP)
+            {
+                x = x1 + (ymax - y1) / m;
+                y = ymax;
+            }
+            else if (pout & BOTTOM)
+            {
+                x = x1 + (ymin - y1) / m;
+                y = ymin;
+            }
+            else if (pout & RIGHT)
+            {
+                y = y1 + m * (xmax - x1);
+                x = xmax;
+            }
+            else if (pout & LEFT)
+
+            {
+                y = y1 + m * (xmin - x1);
+                x = xmin;
+            }
+
+            // Replace the new intersection points
+            if (pout == p1)
+            {
+                x1 = x;
+                y1 = y;
+                p1 = outcode(x1, y1);
+            }
+            else
+            {
+                x2 = x;
+                y2 = y;
+                p2 = outcode(x2, y2);
+            }
+        }
+    } while (!done);
+    if (accept)
+    {
+        glPushMatrix();
+        glTranslatef(200, 200, 0);
+        glScalef(2, 2, 2);
+        glColor3f(1.0, 0.0, 0.0);
+        glBegin(GL_LINE_LOOP);
+        glVertex2f(xmin, ymin);
+        glVertex2f(xmax, ymin);
+        glVertex2f(xmax, ymax);
+        glVertex2f(xmin, ymax);
+        glEnd();
+        glColor3f(0.0, 0.0, 1.0);
+        glBegin(GL_LINES);
+        glVertex2d(x1, y1);
+        glVertex2d(x2, y2);
+        glEnd();
+        glPopMatrix();
+    }
+}
+
+void display()
+{
+    double x1 = 60, y1 = 20, x2 = 80, y2 = 120;
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(1.0, 0.0, 0.0);
+    glBegin(GL_LINES);
+    glVertex2d(x1, y1);
+    glVertex2d(x2, y2);
+    glEnd();
+
+    glColor3f(0.0, 0.0, 1.0);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(xmin, ymin);
+    glVertex2f(xmax, ymin);
+    glVertex2f(xmax, ymax);
+    glVertex2f(xmin, ymax);
+    glEnd();
+
+    CohenSutherlandLineClipAndDraw(x1, y1, x2, y2);
+    glFlush();
+}
+void myinit()
+{
+    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glColor3f(1.0, 0.0, 0.0);
+    glPointSize(1.0);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0.0, 500.0, 0.0, 500.0);
+}
+int main(int argc, char **argv)
+{
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(500, 500);
+    glutInitWindowPosition(0, 0);
+    glutCreateWindow("Cohen Suderland Line Clipping Algorithm");
+    glutDisplayFunc(display);
+    myinit();
+    glutMainLoop();
+}
